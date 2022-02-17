@@ -1,9 +1,13 @@
 import tweepy
 import time
 import math
+#remove this and use your own keyz
 import keys
 
 # GIVAWAY DATA
+#this would be the tweet id 
+# used to retreive data of likes and retweet
+#change it !!!!!!!!!!
 tweet_id = 1494358929975001089
 
 # KEYS
