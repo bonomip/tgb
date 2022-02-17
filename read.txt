@@ -1,0 +1,15 @@
+root
+  |---- src
+  |---- data
+
+• Call each executable by python3 src/exec_name.py
+    - src/follower.py needs to input the scree_name of the account
+    - screen name is @random_name without @
+• Do not remove data folder
+• remove data files after extraction
+
+• useful data 
+        crysto = {'id': 1487743326547857408, 'name': 'crystopunks_nft', 'screen_name': 'CrystopunksNft'}
+        lollo = {'id':1355818085266186240, 'name': 'papalolo.eth', 'screen_name': 'DiottiLoris'}
+
+
