@@ -1,6 +1,7 @@
 import tweepy
 import time
 import math
+import logging
 #remove this and use your own keyz
 import keys
 
@@ -73,16 +74,18 @@ def getFollowers(_screen_name):
     while True:
         try:
             user = next(users)
-        except tweepy.errors.TooManyRequests:
-            print("Too Many Request, wait 15 minutes...")
+            followers.append(user.screen_name)
+        except tweepy.errors.TooManyRequests as e:
+            logging.error("Twitter api rate limit reached")
             print("Users processed in total: "+str(len(followers)))
             print("Users left to process: "+str(count-len(followers)))
             time.sleep(api_cool_down)
-            user = next(users)
+        except tweepy.errors.TweepyException as e:
+            logging.error("Tweepy error occurred:{}".format(e))
         except StopIteration:
             break
-        followers.append(user.screen_name)
-        
+
+
     finish = time.time()
     elapsed = (finish - start)
     print("finised in "+str(elapsed / 60)+" minutes")
