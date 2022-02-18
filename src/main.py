@@ -2,6 +2,7 @@ import tweepy
 import time
 import math
 import logging
+import json
 #remove this and use your own keyz
 import keys
 
@@ -9,14 +10,17 @@ import keys
 owner_tweet = "charlieesposito"
 tweet_id = 1477616556813299717
 giveaway_keyword = "s8per"
-number_of_tag = 0 ## @crysto @culo @gay
+number_of_tags = 0 ## @crysto @culo @gay
 giveaway_end = "2022-02-19"
 number_of_winners = 1 #sum of all the winners of all categories
 split = False # there are more categories
 number_of_winners2 = 3 # winners of second categories
 ######
 ###### MESSAGE FORMAT 
-######       NAMI_WALLET_ADRESS DISCORD_USER_NAME TAG_1 ... TAG_N KEYWORD
+######       DISCORD_USER_NAME NAMI_WALLET_ADRESS TAG_1 ... TAG_N KEYWORD
+######
+###### SHOULD ONLY REPLY ONCE WITH THE KEYWORD!!!
+###### SHOULD ONLY USE ONE SPACE AS DELIMETER! NOT MULTIPLE SPACES!!!! 
 ######
 
 #File names
@@ -43,6 +47,15 @@ api_cool_down = 60*15
 def difference(l1, l2):
     l3 = [x for x in l1 if x not in l2]
     return l3
+
+def writeDict(file_name, d):  
+    with open(file_base_dir+file_name, 'w') as cf:
+        cf.write(json.dumps(d))
+
+def writePlain(file_name, list):
+    with open(file_base_dir+file_name, "a") as fp:
+        for status in list:
+            fp.write(json.dumps(status._json))
 
 def writeFile(file_name, list):
     with open(file_base_dir+file_name, "w") as fp:
@@ -94,6 +107,7 @@ def getFollowers(_screen_name):
             logging.error("Twitter api rate limit reached")
             print("Users processed in total: "+str(len(followers)))
             print("Users left to process: "+str(count-len(followers)))
+            writeFile(followers_base_file+"bkp_"+_screen_name, followers)
             time.sleep(api_cool_down)
         except tweepy.errors.TweepyException as e:
             logging.error("Tweepy error occurred:{}".format(e))
@@ -108,6 +122,21 @@ def getFollowers(_screen_name):
     writeFile(followers_base_file+_screen_name, followers)
     return followers
 
+def checkTags(source_screen_name, tags):
+    if len(tags) == 0:
+        return False
+
+    for tag in tags:
+        try:
+            api.get_user(screen_name=tag)
+        except tweepy.errors.NotFound:
+            logging.error("Tagged user don't exist!")
+            return False
+        friendship = api.get_friendship(source_screen_name=source_screen_name, target_screen_name=tag)
+        if not friendship[1].following: #if someone tagged not a friend
+            return False
+    return True
+
 def getReplies(candidates, _screen_name, tweet_id, key_word):
     query = 'to:{} {}'.format(_screen_name, key_word)
 
@@ -121,26 +150,49 @@ def getReplies(candidates, _screen_name, tweet_id, key_word):
                 reply.append(tweet)
         except tweepy.errors.TooManyRequests as e:
             logging.error("Twitter api rate limit reached:{}".format(e))
+            writePlain("bkp_"+candidates_file, reply)
             time.sleep(60)
         except tweepy.errors.TweepyException as e:
             logging.error("Tweepy error occured:{}".format(e))
+            writePlain("bkp_"+candidates_file, reply)
             break
         except StopIteration:
             break
         except Exception as e:
             logging.error("Failed while fetching replies {}".format(e))
+            writePlain("bkp_"+candidates_file, reply)
             break
     
     dict = {}
     for tweet in reply:
-        data = tweet.text.split()[0:3+number_of_tag]
-        data[0] = tweet.author.screen_name
+        data = [ tweet.author.screen_name ]
         if data[0] in candidates and data[0] not in dict.keys():
-            #-----------------TODO!!!!!!!!!!!!!!
-            ## do check on message validity such tags checks and wallet checks
-            dict[data[0]] = data[1:3] ##only wallet_addr and discord_name
+            try:
+                tmp = tweet.text.split(" ", 1) #remove @mention
+                tmp = tmp[1].split("#", 1) #get discord name
+                discord_name = tmp[0]+"#" #save it
+                tmp = tmp[1].split(" ") #get discord number
+                discord_name += tmp[0] #save it
+                data.append(discord_name)
+                data.append(tmp[1]) # wallet addr
+                if not checkTags( tmp[2:2+number_of_tags] ) :
+                    continue
+            except IndexError:
+                logging.error("Tweet format not correct")
+                logging.error(tweet.text)
+                continue
+            dict[data[0]] = data[1:3]
 
-    return dict
+    candidates = dict
+    number_of_candidates = len( candidates )
+
+    if number_of_candidates != 0:
+        writeDict(candidates_file, candidates)
+        print( "There are " + str( number_of_candidates ) + " candidates!" )
+        return candidates
+    else:
+        logging.error("No candidates found... :(")
+        return {}
 
 def getLast100(func, unwrap1, unwrap2):
     data = func(id=tweet_id)

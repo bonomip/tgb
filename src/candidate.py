@@ -1,5 +1,4 @@
 import main
-import json
 import os
 
 files = [   main.file_base_dir+main.like_file,
@@ -23,10 +22,6 @@ def intrsct(l1, l2):
 def intersect(l1, l2, l3, l4):
     return intrsct( intrsct(l1, l2), intrsct(l3, l4) )
 
-def writeDict(file_name, d):  
-    with open(main.file_base_dir+file_name, 'w') as cf:
-        cf.write(json.dumps(d))
-
 def candidates(files):
     lists = [ ]
 
@@ -42,13 +37,7 @@ def candidates(files):
 
 candidates = candidates(files)
 
-candidates = main.getReplies(candidates, main.owner_tweet, main.tweet_id, main.giveaway_keyword)
-
-candidates_name = list(candidates.keys())
-
-print("There are "+str(len(candidates_name))+" candidates")
-
-writeDict(main.candidates_file, candidates)
+main.getReplies(candidates, main.owner_tweet, main.tweet_id, main.giveaway_keyword)
 
 
 
