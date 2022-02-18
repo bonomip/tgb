@@ -6,10 +6,25 @@ import logging
 import keys
 
 # GIVAWAY DATA
-#this would be the tweet id 
-# used to retreive data of likes and retweet
-#change it !!!!!!!!!!
-tweet_id = 1494358929975001089
+owner_tweet = "charlieesposito"
+tweet_id = 1477616556813299717
+giveaway_keyword = "s8per"
+number_of_tag = 0 ## @crysto @culo @gay
+giveaway_end = "2022-02-19"
+number_of_winners = 1 #sum of all the winners of all categories
+split = False # there are more categories
+number_of_winners2 = 3 # winners of second categories
+######
+###### MESSAGE FORMAT 
+######       NAMI_WALLET_ADRESS DISCORD_USER_NAME TAG_1 ... TAG_N KEYWORD
+######
+
+#File names
+file_base_dir = "data/"
+like_file = "like_"+str(tweet_id)
+retweet_file = "retweet_"+str(tweet_id)
+followers_base_file = "followers_"
+candidates_file = "candidates_"+str(tweet_id)
 
 # KEYS
 client_id = keys.client_id
@@ -30,7 +45,7 @@ def difference(l1, l2):
     return l3
 
 def writeFile(file_name, list):
-    with open("data/"+file_name, "w") as fp:
+    with open(file_base_dir+file_name, "w") as fp:
         for user in list:
             fp.writelines(user+"\n")
 
@@ -41,7 +56,7 @@ def appendToFile(file_name, list):
 
 def readFile(file_name):
     result = []
-    with open("data/"+file_name, "r") as fp:
+    with open(file_base_dir+file_name, "r") as fp:
         for l in fp:
             result.append(l.rstrip())
     return result
@@ -90,8 +105,42 @@ def getFollowers(_screen_name):
     elapsed = (finish - start)
     print("finised in "+str(elapsed / 60)+" minutes")
     
-    writeFile("followers_"+_screen_name, followers)
+    writeFile(followers_base_file+_screen_name, followers)
     return followers
+
+def getReplies(candidates, _screen_name, tweet_id, key_word):
+    query = 'to:{} {}'.format(_screen_name, key_word)
+
+    tweets = tweepy.Cursor(api.search_tweets, until=giveaway_end, since_id=tweet_id, count=200, q=query).items()
+    
+    reply = []
+    while True:
+        try:
+            tweet = tweets.next()
+            if(tweet.in_reply_to_status_id == tweet_id ):
+                reply.append(tweet)
+        except tweepy.errors.TooManyRequests as e:
+            logging.error("Twitter api rate limit reached:{}".format(e))
+            time.sleep(60)
+        except tweepy.errors.TweepyException as e:
+            logging.error("Tweepy error occured:{}".format(e))
+            break
+        except StopIteration:
+            break
+        except Exception as e:
+            logging.error("Failed while fetching replies {}".format(e))
+            break
+    
+    dict = {}
+    for tweet in reply:
+        data = tweet.text.split()[0:3+number_of_tag]
+        data[0] = tweet.author.screen_name
+        if data[0] in candidates and data[0] not in dict.keys():
+            #-----------------TODO!!!!!!!!!!!!!!
+            ## do check on message validity such tags checks and wallet checks
+            dict[data[0]] = data[1:3] ##only wallet_addr and discord_name
+
+    return dict
 
 def getLast100(func, unwrap1, unwrap2):
     data = func(id=tweet_id)
