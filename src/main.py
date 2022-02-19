@@ -81,47 +81,6 @@ api = tweepy.API(auth)
 auth.set_access_token(api_token, api_token_secret) 
 client = tweepy.Client(bearer_token=bearer_token)
 
-#GET FOLLOWERS FUNCTION
-def getFollowers(_screen_name):
-
-    count = api.get_user(screen_name=_screen_name).followers_count
-    
-    users = tweepy.Cursor(api.get_followers, screen_name=_screen_name, count=200).items()
-
-    followers = []
-
-    step_size = 2400.0
-    step_time = 20.0
-    single_entry_time = step_time / step_size
-    n_step = math.ceil(count / step_size) - 1
-    total_estimated_time = ( (n_step * api_cool_down) + count * single_entry_time) / 60.0
-    total_estimated_time = round(total_estimated_time, 1)
-    print(_screen_name+" has "+str(count)+" follower. Estimated processing time: "+str(total_estimated_time)+ " minutes")
-    
-    start = time.time()
-    while True:
-        try:
-            user = next(users)
-            followers.append(user.screen_name)
-        except tweepy.errors.TooManyRequests as e:
-            logging.error("Twitter api rate limit reached")
-            print("Users processed in total: "+str(len(followers)))
-            print("Users left to process: "+str(count-len(followers)))
-            writeFile(followers_base_file+"bkp_"+_screen_name, followers)
-            time.sleep(api_cool_down)
-        except tweepy.errors.TweepyException as e:
-            logging.error("Tweepy error occurred:{}".format(e))
-        except StopIteration:
-            break
-
-
-    finish = time.time()
-    elapsed = (finish - start)
-    print("finised in "+str(elapsed / 60)+" minutes")
-    
-    writeFile(followers_base_file+_screen_name, followers)
-    return followers
-
 def checkTags(source_screen_name, tags):
     if len(tags) == 0:
         return False

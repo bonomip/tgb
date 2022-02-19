@@ -4,11 +4,6 @@ import os
 files = [   main.file_base_dir+main.like_file,
             main.file_base_dir+main.retweet_file ]
 
-for file in os.listdir(main.file_base_dir):
-    i = len(main.followers_base_file)
-    if file[0:i] == 'followers_' :
-        files.append(main.file_base_dir+file)
-
 def readFile(file_name):
     result = []
     with open(file_name, "r") as fp:
