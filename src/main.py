@@ -180,9 +180,9 @@ def getReplies(candidates, _screen_name, tweet_id, key_word):
 
     writeDict(candidates_file, candidates)
 
-def iterRetweet(id, l, next_page):
+def iterTweetsInfo(func, id, l, next_page):
     try:
-        page = client.get_retweeters(id=id, pagination_token=next_page)
+        page = func(id=id, pagination_token=next_page)
     except tweepy.errors.TooManyRequests as e:
             logging.error("Twitter api rate limit reached:{}".format(e))
             writeFile("bkp_"+retweet_file, l)
@@ -191,16 +191,16 @@ def iterRetweet(id, l, next_page):
         if 'next_token' in page[3].keys():
                 for user in page[0]:
                     l.append(user.username)
-                return iterRetweet(id, l, page[3]['next_token'])
+                return iterTweetsInfo(func, id, l, page[3]['next_token'])
         return l
 
-    iterRetweet(id, l, next_page)
+    iterTweetsInfo(id, l, next_page)
 
-def getReetwitters(tweet_id):
+def getTweetsInfo(func, tweet_id, file_name):
     result = []
     while True:
         try:
-            page = client.get_retweeters(id=tweet_id)
+            page = func(id=tweet_id)
         except tweepy.errors.TooManyRequests as e:
             logging.error("Twitter api rate limit reached:{}".format(e))
             writeFile("bkp_"+retweet_file, result)
@@ -210,36 +210,8 @@ def getReetwitters(tweet_id):
                 result.append(user.username)
 
             if "next_token" in page[3].keys():
-                result = iterRetweet(tweet_id, result, page[3]['next_token'])
+                result = iterTweetsInfo(func, tweet_id, result, page[3]['next_token'])
 
             break
 
-    writeFile(retweet_file, set(result))
-
-def getLast100(func, unwrap1, unwrap2):
-    data = func(id=tweet_id)
-    l = []
-    for d in unwrap1(data):
-        l.append(unwrap2(d))
-    return l
-
-def infiniteUpdate(file_name, func, unwrap1, unwrap2):
-    l = getLast100(func, unwrap1, unwrap2)    
-
-    print("Append to file...")
-    writeFile(file_name, l)
-
-    print("Go to sleep for 1 minute")
-    time.sleep(sleep_time)
-    print("Awake...")
-
-    while True:
-        l1 = readFile(file_name)
-        l2 = getLast100(func, unwrap1, unwrap2)
-        l3 = difference(l2, l1)
-        if(len(l3) != 0):
-            print("Append to file...")
-            appendToFile(file_name, l3)
-        print("Go to sleep for 1 minute")
-        time.sleep(sleep_time)
-        print("Awake...")
+    writeFile(file_name, set(result))

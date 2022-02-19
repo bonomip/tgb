@@ -1,3 +1,3 @@
 import main
 
-main.infiniteUpdate(main.like_file, main.client.get_liking_users, lambda x: x.data, lambda x: x.username)
+main.getTweetsInfo(main.client.get_liking_users, main.tweet_id, main.like_file)
