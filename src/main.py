@@ -118,37 +118,38 @@ def getReplies(candidates, _screen_name, tweet_id, key_word):
     utils.writeDict(utils.candidates_file_name, candidates)
 
 def iterTweetsInfo(func, id, l, next_page):
-    try:
-        page = func(id=id, pagination_token=next_page)
-    except tweepy.errors.TooManyRequests as e:
-            logging.error("Twitter api rate limit reached:{}".format(e))
-            utils.writeFile("bkp_"+utils.retweet_file_name, l)
-            time.sleep(60*15)
-    else:    
-        if 'next_token' in page[3].keys():
+    while True:
+        try:
+            print("iterating...")
+            page = func(id=id,pagination_token=next_page)
+        
+        except tweepy.errors.TooManyRequests as e:
+                logging.error("Twitter api rate limit reached: {}".format(e))
+                time.sleep(60*15)
+        
+        else:    
+            if 'next_token' not in page[3].keys():
+                return l
+
             for user in page[0]:
                 l.append(user.username)
-            return iterTweetsInfo(func, id, l, page[3]['next_token'])
-        return l
 
-    iterTweetsInfo(id, l, next_page)
+            return iterTweetsInfo(func, id, l, page[3]['next_token'])
 
 def getTweetsInfo(func, tweet_id, file_name):
     result = []
+
     while True:
         try:
             page = func(id=tweet_id)
+
         except tweepy.errors.TooManyRequests as e:
             logging.error("Twitter api rate limit reached:{}".format(e))
             utils.writeFile("bkp_"+file_name, result)
             time.sleep(60*15)
-        else:    
-            for user in page[0]:
-                result.append(user.username)
+        
+        else:
+            result = [ u.username for u in page[0] ]    
 
-            if "next_token" in page[3].keys():
-                result = iterTweetsInfo(func, tweet_id, result, page[3]['next_token'])
-
-            break
-
-    utils.writeFile(file_name, set(result))
+            return utils.writeFile(file_name, iterTweetsInfo(func, tweet_id, result, page[3]['next_token']))
+            
