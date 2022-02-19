@@ -203,7 +203,7 @@ def getTweetsInfo(func, tweet_id, file_name):
             page = func(id=tweet_id)
         except tweepy.errors.TooManyRequests as e:
             logging.error("Twitter api rate limit reached:{}".format(e))
-            writeFile("bkp_"+retweet_file, result)
+            writeFile("bkp_"+file_name, result)
             time.sleep(60*15)
         else:    
             for user in page[0]:
