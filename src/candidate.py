@@ -1,5 +1,4 @@
 import main
-import os
 
 files = [   main.file_base_dir+main.like_file,
             main.file_base_dir+main.retweet_file ]

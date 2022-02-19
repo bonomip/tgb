@@ -12,4 +12,9 @@ root
         crysto = {'id': 1487743326547857408, 'name': 'crystopunks_nft', 'screen_name': 'CrystopunksNft'}
         lollo = {'id':1355818085266186240, 'name': 'papalolo.eth', 'screen_name': 'DiottiLoris'}
 
-
+1) edit givaway data in src/main.py headers
+2) run python3 src/like.py
+3) run python3 src/retweet.py
+4) run python3 src/candidate.py
+5) run python3 src/extraction.py 
+6) winners are in data/__winners__
