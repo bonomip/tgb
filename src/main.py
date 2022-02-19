@@ -1,3 +1,4 @@
+import re
 import tweepy
 import time
 import math
@@ -7,14 +8,17 @@ import json
 import keys
 
 # GIVAWAY DATA
-owner_tweet = "charlieesposito"
-tweet_id = 1477616556813299717
+owner_tweet = "charlieesposito" #of the tweet that should be retweeted and replied
+tweet_id = 1493930782238253057  #of the tweet that should be retweeted and replied
+to_follow = [ "screen_name1", "screen_name2" ]
+to_like = [ tweet_id ]
 giveaway_keyword = "s8per"
 number_of_tags = 0 ## @crysto @culo @gay
 giveaway_end = "2022-02-19"
 number_of_winners = 1 #sum of all the winners of all categories
 split = False # there are more categories
 number_of_winners2 = 3 # winners of second categories
+
 ######
 ###### MESSAGE FORMAT 
 ######       DISCORD_USER_NAME NAMI_WALLET_ADRESS TAG_1 ... TAG_N KEYWORD
@@ -39,6 +43,12 @@ bearer_token = keys.bearer_token
 api_token =  keys.api_token
 api_token_secret = keys.api_token_secret
 
+#SETUP ENDPOINT
+auth = tweepy.OAuthHandler(api_key, api_key_secret, "oop")
+api = tweepy.API(auth)
+auth.set_access_token(api_token, api_token_secret) 
+client = tweepy.Client(bearer_token=bearer_token)
+
 # PARAMETERS
 sleep_time = 60
 api_cool_down = 60*15
@@ -48,7 +58,7 @@ def difference(l1, l2):
     l3 = [x for x in l1 if x not in l2]
     return l3
 
-def writeDict(file_name, d):  
+def writeDict(file_name, d):
     with open(file_base_dir+file_name, 'w') as cf:
         cf.write(json.dumps(d))
 
@@ -74,57 +84,70 @@ def readFile(file_name):
             result.append(l.rstrip())
     return result
         
+## check if name_2 follows name_1
+## requires screen_names
+def isFollowedBy(sn_1, sn_2):
+    return api.get_friendship(source_screen_name=sn_1,target_screen_name=sn_2)[1].following
 
-#SETUP ENDPOINT
-auth = tweepy.OAuthHandler(api_key, api_key_secret, "oop")
-api = tweepy.API(auth)
-auth.set_access_token(api_token, api_token_secret) 
-client = tweepy.Client(bearer_token=bearer_token)
+def checkIfFollows(screen_name, list):
+    for name in list:
+        if not isFollowedBy(name, screen_name):
+            return False
+    return True
 
-def checkTags(source_screen_name, tags):
-    if len(tags) == 0:
+def checkIfLikes(screen_name, list):
+    return
+
+def checkTags(screen_name, tags):
+    if len(tags) < number_of_tags: #respect the requirment
         return False
 
     for tag in tags:
         try:
+            #check if tag exist
             api.get_user(screen_name=tag)
         except tweepy.errors.NotFound:
             logging.error("Tagged user don't exist!")
             return False
-        friendship = api.get_friendship(source_screen_name=source_screen_name, target_screen_name=tag)
-        if not friendship[1].following: #if someone tagged not a friend
+        #check if tag follows screen_name    
+        if not isFollowedBy(screen_name, tags) :
             return False
+    
     return True
 
-def getReplies(candidates, _screen_name, tweet_id, key_word):
-    query = 'to:{} {}'.format(_screen_name, key_word)
-
-    tweets = tweepy.Cursor(api.search_tweets, until=giveaway_end, since_id=tweet_id, count=200, q=query).items()
-    
-    reply = []
+def getRepliesToTweet(tweets, tweet_id):
+    replies = []
     while True:
         try:
             tweet = tweets.next()
             if(tweet.in_reply_to_status_id == tweet_id ):
-                reply.append(tweet)
+                replies.append(tweet)
         except tweepy.errors.TooManyRequests as e:
             logging.error("Twitter api rate limit reached:{}".format(e))
-            writePlain("bkp_"+candidates_file, reply)
+            writePlain("bkp_"+candidates_file, replies)
             time.sleep(60)
         except tweepy.errors.TweepyException as e:
             logging.error("Tweepy error occured:{}".format(e))
-            writePlain("bkp_"+candidates_file, reply)
+            writePlain("bkp_"+candidates_file, replies)
             break
         except StopIteration:
             break
         except Exception as e:
             logging.error("Failed while fetching replies {}".format(e))
-            writePlain("bkp_"+candidates_file, reply)
+            writePlain("bkp_"+candidates_file, replies)
             break
-    
-    dict = {}
-    for tweet in reply:
+    return replies
+
+def getValidReplies(replies, candidates):
+    result_dict = {}
+    for tweet in replies:
         data = [ tweet.author.screen_name ]
+        if not checkIfFollows(data[0], to_follow) :
+            print(data[0]+" dont follows the required user/users")
+            continue
+        if not checkIfLikes(data[0], tweet_id):
+            print(data[0]+" dont liked the required tweet/tweets")
+            continue    
         if data[0] in candidates and data[0] not in dict.keys():
             try:
                 tmp = tweet.text.split(" ", 1) #remove @mention
@@ -140,18 +163,58 @@ def getReplies(candidates, _screen_name, tweet_id, key_word):
                 logging.error("Tweet format not correct")
                 logging.error(tweet.text)
                 continue
-            dict[data[0]] = data[1:3]
+            result_dict[data[0]] = data[1:3]
+    
+    return result_dict
 
-    candidates = dict
-    number_of_candidates = len( candidates )
+def getReplies(candidates, _screen_name, tweet_id, key_word):
+    query = 'to:{} {}'.format(_screen_name, key_word)
 
-    if number_of_candidates != 0:
-        writeDict(candidates_file, candidates)
-        print( "There are " + str( number_of_candidates ) + " candidates!" )
-        return candidates
-    else:
-        logging.error("No candidates found... :(")
-        return {}
+    tweets = tweepy.Cursor(api.search_tweets, until=giveaway_end, since_id=tweet_id, count=200, q=query).items()
+    
+    replies = getRepliesToTweet(tweets, tweet_id)
+    
+    candidates = getValidReplies(replies, candidates)
+    
+    print( "There are " + str( len( candidates ) ) + " candidates!" )
+
+    writeDict(candidates_file, candidates)
+
+def iterRetweet(id, l, next_page):
+    try:
+        page = client.get_retweeters(id=id, pagination_token=next_page)
+    except tweepy.errors.TooManyRequests as e:
+            logging.error("Twitter api rate limit reached:{}".format(e))
+            writeFile("bkp_"+retweet_file, l)
+            time.sleep(60*15)
+    else:    
+        if 'next_token' in page[3].keys():
+                for user in page[0]:
+                    l.append(user.username)
+                return iterRetweet(id, l, page[3]['next_token'])
+        return l
+
+    iterRetweet(id, l, next_page)
+
+def getReetwitters(tweet_id):
+    result = []
+    while True:
+        try:
+            page = client.get_retweeters(id=tweet_id)
+        except tweepy.errors.TooManyRequests as e:
+            logging.error("Twitter api rate limit reached:{}".format(e))
+            writeFile("bkp_"+retweet_file, result)
+            time.sleep(60*15)
+        else:    
+            for user in page[0]:
+                result.append(user.username)
+
+            if "next_token" in page[3].keys():
+                result = iterRetweet(tweet_id, result, page[3]['next_token'])
+
+            break
+
+    writeFile(retweet_file, set(result))
 
 def getLast100(func, unwrap1, unwrap2):
     data = func(id=tweet_id)
