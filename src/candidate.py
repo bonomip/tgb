@@ -1,37 +1,23 @@
 import main
+import utils
 
-files = [   main.file_base_dir+main.like_file,
+files = [   utils.file_base_dir+utils.like_file,
             main.file_base_dir+main.retweet_file ]
-
-def readFile(file_name):
-    result = []
-    with open(file_name, "r") as fp:
-        for l in fp:
-            result.append(l.rstrip())
-    return result
-
-def intrsct(l1, l2):
-    return set(l1).intersection(l2)
-
-def intersect(l1, l2, l3, l4):
-    return intrsct( intrsct(l1, l2), intrsct(l3, l4) )
 
 def candidates(files):
     lists = [ ]
 
     for file in files:
-        lists.append(readFile(file))
+        lists.append(utils.readFile(file))
 
     result = lists.pop()
 
     for l in lists:
-        result = intrsct(result, l)
+        result = utils.intersect(result, l)
     
     return result
 
-candidates = candidates(files)
-
-main.getReplies(candidates, main.owner_tweet, main.tweet_id, main.giveaway_keyword)
+main.getReplies(candidates(files), utils.owner_tweet, utils.tweet_id, utils.giveaway_keyword)
 
 
 

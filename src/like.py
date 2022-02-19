@@ -1,3 +1,4 @@
 import main
+import utils
 
-main.getTweetsInfo(main.client.get_liking_users, main.tweet_id, main.like_file)
+main.getTweetsInfo(main.client.get_liking_users, utils.tweet_id, utils.like_file_name)

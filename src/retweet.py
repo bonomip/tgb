@@ -1,3 +1,4 @@
 import main
+import utils
 
-main.getTweetsInfo(main.client.get_retweeters, main.tweet_id, main.retweet_file)
+main.getTweetsInfo(main.client.get_retweeters, utils.tweet_id, utils.retweet_file_name)
